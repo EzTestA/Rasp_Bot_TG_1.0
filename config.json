@@ -1,0 +1,7 @@
+{
+    "token": "TOKEN",
+    "site_url": "SITE",
+    "admin_login": "root",
+    "admin_password": "root",
+    "check_interval": 600
+}
