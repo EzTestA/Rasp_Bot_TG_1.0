@@ -12,11 +12,8 @@ SCHEDULES_DIR = 'schedules'
 LAST_SCHEDULE_FILE = os.path.join(SCHEDULES_DIR, 'last_schedule.json')
 
 # Настройка логирования
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO
-)
-logger = logging.getLogger(__name__)
+from log_handler import setup_logging
+logger = setup_logging()
 
 def ensure_schedules_dir():
     """Создает папку для расписаний, если её нет"""

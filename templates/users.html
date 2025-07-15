@@ -677,42 +677,50 @@
         }
 
         function restartBot() {
-            if (!confirm('Вы уверены, что хотите перезапустить бота?')) return;
+    if (!confirm('Вы уверены, что хотите перезапустить систему (бот + админ-панель)?')) return;
+    
+    fetch('/execute_command', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({command: 'restart'})
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        setTimeout(() => {
+            window.location.href = '/';
+            setTimeout(() => window.close(), 500);
+        }, 2000);
+    })
+    .catch(error => {
+        alert('Ошибка: ' + error);
+    });
+}
 
-            fetch('/restart_bot')
-                .then(response => response.json())
-                .then(data => alert(data.message))
-                .catch(error => alert('Ошибка: ' + error));
-        }
-
-        function shutdownSystem() {
-            if (!confirm('Вы уверены, что хотите полностью выключить систему (бот + админ-панель)?')) return;
-
-            fetch('/shutdown', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                }
-            })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('Сервер не отвечает');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    alert(data.message);
-                    setTimeout(() => {
-                        window.location.href = '/';
-                        setTimeout(() => window.close(), 500);
-                    }, 1000);
-                })
-                .catch(error => {
-                    console.error('Error:', error);
-                    alert('Система завершает работу...');
-                    setTimeout(() => window.close(), 1000);
-                });
-        }
+function shutdownSystem() {
+    if (!confirm('Вы уверены, что хотите полностью выключить систему (бот + админ-панель)?')) return;
+    
+    fetch('/execute_command', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({command: 'shutdown'})
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        setTimeout(() => {
+            window.location.href = '/';
+            setTimeout(() => window.close(), 500);
+        }, 2000);
+    })
+    .catch(error => {
+        alert('Ошибка: ' + error);
+    });
+}
 
         $(document).ready(function () {
             loadUsers();

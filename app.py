@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-from asyncio.log import logger
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from telegram import Bot
 import json
@@ -19,6 +18,8 @@ from bot import send_ban_notification as send_bot_notification
 
 app = Flask(__name__, template_folder='templates')
 app.secret_key = 'your-secret-key-here'
+from log_handler import setup_logging
+logger = setup_logging()
 
 # Константы путей
 USERS_DIR = 'users'
@@ -147,8 +148,30 @@ def restart_bot():
     return start_bot()
 
 def bot_status():
-    """Статус бота"""
-    return "running" if get_bot_process() else "stopped"
+    """Статус бота с учетом работы в Termux"""
+    try:
+        # Проверяем, работает ли в Termux
+        is_termux = 'com.termux' in os.environ.get('PREFIX', '')
+        
+        if is_termux:
+            # Альтернативный способ проверки для Termux
+            try:
+                # Проверяем наличие файла с PID бота
+                pid_file = os.path.join(os.path.dirname(__file__), 'bot.pid')
+                if os.path.exists(pid_file):
+                    with open(pid_file, 'r') as f:
+                        pid = int(f.read().strip())
+                    # Проверяем существует ли процесс с таким PID
+                    return "running" if os.path.exists(f"/proc/{pid}") else "stopped"
+                return "stopped"
+            except:
+                return "stopped"
+        else:
+            # Стандартная проверка для других ОС
+            return "running" if get_bot_process() else "stopped"
+    except Exception as e:
+        print(f"Ошибка проверки статуса бота: {e}")
+        return "stopped"
 
 def load_user_data(user_id):
     """Загружает данные пользователя"""
@@ -343,6 +366,38 @@ def restart_bot():
     except Exception as e:
         print(f"⛔ Критическая ошибка при перезапуске бота: {str(e)}")
         return False
+    
+@app.route('/execute_command', methods=['POST'])
+def execute_command():
+    """Выполняет команду перезапуска или выключения"""
+    if not session.get('logged_in'):
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.get_json()
+        command = data.get('command')
+        
+        if command not in ['restart', 'shutdown']:
+            return jsonify({'error': 'Invalid command'}), 400
+        
+        # Запускаем менеджер в отдельном процессе
+        if sys.platform == 'win32':
+            creation_flags = subprocess.CREATE_NEW_PROCESS_GROUP | subprocess.CREATE_NO_WINDOW
+        else:
+            creation_flags = 0
+            
+        subprocess.Popen(
+            [sys.executable, 'bot_manager.py', command],
+            creationflags=creation_flags,
+            start_new_session=True
+        )
+        
+        return jsonify({
+            'message': f'Команда {command} принята. Система будет {"перезапущена" if command == "restart" else "выключена"} через несколько секунд.'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/start_bot')
 def start_bot_route():

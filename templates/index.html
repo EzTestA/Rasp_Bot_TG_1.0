@@ -188,53 +188,48 @@
         }
         
         function restartBot() {
-            if (!confirm('Вы уверены, что хотите перезапустить бота?')) return;
-            
-            fetch('/restart_bot')
-                .then(response => {
-                    if (!response.ok) throw new Error('Ошибка сервера');
-                    return response.json();
-                })
-                .then(data => {
-                    alert(data.message);
-                    setTimeout(() => location.reload(), 1000);
-                })
-                .catch(error => {
-                    alert('Ошибка: ' + error.message);
-                });
-        }
-        document.getElementById('check_interval').addEventListener('change', function () {
-            if (this.value < 300) this.value = 300;
-            if (this.value > 86400) this.value = 86400;
-        });
-
-function shutdownSystem() {
-    if (!confirm('Вы уверены, что хотите полностью выключить систему (бот + админ-панель)?')) return;
-
-    fetch('/shutdown', {
+    if (!confirm('Вы уверены, что хотите перезапустить систему (бот + админ-панель)?')) return;
+    
+    fetch('/execute_command', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-        }
+        },
+        body: JSON.stringify({command: 'restart'})
     })
-    .then(response => {
-        if (!response.ok) {
-            throw new Error('Сервер не отвечает');
-        }
-        return response.json();
-    })
+    .then(response => response.json())
     .then(data => {
         alert(data.message);
-        // Закрываем вкладку после небольшой задержки
         setTimeout(() => {
             window.location.href = '/';
             setTimeout(() => window.close(), 500);
-        }, 1000);
+        }, 2000);
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Система завершает работу...');
-        setTimeout(() => window.close(), 1000);
+        alert('Ошибка: ' + error);
+    });
+}
+
+function shutdownSystem() {
+    if (!confirm('Вы уверены, что хотите полностью выключить систему (бот + админ-панель)?')) return;
+    
+    fetch('/execute_command', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({command: 'shutdown'})
+    })
+    .then(response => response.json())
+    .then(data => {
+        alert(data.message);
+        setTimeout(() => {
+            window.location.href = '/';
+            setTimeout(() => window.close(), 500);
+        }, 2000);
+    })
+    .catch(error => {
+        alert('Ошибка: ' + error);
     });
 }
     </script>

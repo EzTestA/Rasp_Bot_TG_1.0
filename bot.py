@@ -31,17 +31,8 @@ os.makedirs(LOG_DIR, exist_ok=True)
 os.makedirs(SCHEDULES_DIR, exist_ok=True)
 
 # Настройка логирования
-log_file = os.path.join(LOG_DIR, 'bot.log')
-logging.basicConfig(
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    level=logging.INFO,
-    handlers=[
-        logging.FileHandler(log_file, encoding='utf-8', mode='a'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
-logger.propagate = False
+from log_handler import setup_logging
+logger = setup_logging()
 
 # Глобальные переменные
 user_states = {}
@@ -606,6 +597,14 @@ async def main():
     """Основная функция запуска бота"""
     global application
     
+    # Сохраняем PID файл при запуске
+    pid_file = os.path.join(os.path.dirname(__file__), 'bot.pid')
+    try:
+        with open(pid_file, 'w') as f:
+            f.write(str(os.getpid()))
+    except Exception as e:
+        logger.error(f"Ошибка сохранения PID файла: {e}")
+
     try:
         config = load_config()
         if not config or not config.get('token'):
@@ -620,7 +619,7 @@ async def main():
         application.add_handler(CommandHandler("info", bot_info))
         application.add_handler(CommandHandler("notif", toggle_notifications))
         
-        # Основной обработчик текстовых сообщений (включая кнопки)
+        # Основной обработчик текстовых сообщений
         application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
         
         # Планировщик проверки расписания
@@ -644,7 +643,32 @@ async def main():
     except Exception as e:
         logger.error(f"❌ Критическая ошибка: {str(e)}")
     finally:
+        # Удаляем PID файл при завершении
+        try:
+            os.remove(pid_file)
+        except Exception as e:
+            logger.error(f"Ошибка удаления PID файла: {e}")
+        
         await shutdown_application()
+
+def signal_handler(sig, frame):
+    """Обработчик сигналов для завершения работы"""
+    logger.info("Получен сигнал завершения")
+    shutdown_event.set()
+
+if __name__ == "__main__":
+    import signal
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+    
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        logger.info("🛑 Принудительная остановка бота")
+    except Exception as e:
+        logger.error(f"Необработанная ошибка: {e}")
+    finally:
+        logger.info("Бот завершил работу")
 
 def signal_handler(sig, frame):
     """Обработчик сигналов для завершения работы"""
